@@ -1,0 +1,15 @@
+{
+  "Name": "GeoIP Routing",
+  "GlobalProxy": "false",
+  "Geoipurl": "https://raw.githubusercontent.com/ElectroZhuk/geoip-iplist-tunnel-all/gh-pages/geoip_iplist.dat",
+  "ProxyIp": [
+    "geoip:all"
+  ],
+  "ProxySites": [],
+  "DirectSites": [],
+  "DirectIp": [],
+  "BlockSites": [],
+  "BlockIp": [],
+  "DomainStrategy": "IPOnDemand",
+  "FakeDNS": "false"
+}
