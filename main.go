@@ -227,7 +227,7 @@ func main() {
 	sort.Strings(keys)
 
 	var geoIP []byte
-	geoIP = appendBytesField(geoIP, 1, []byte("all"))
+	geoIP = appendBytesField(geoIP, 1, []byte("ALL"))
 	for _, k := range keys {
 		geoIP = appendBytesField(geoIP, 2, unique[k].raw)
 	}
@@ -250,7 +250,7 @@ func main() {
 			if err != nil {
 				fatal(fmt.Errorf("output validation: %w", err))
 			}
-			if code != "all" {
+			if code != "ALL" {
 				fatal(fmt.Errorf("output validation: unexpected category %q", code))
 			}
 			outputGroups++
@@ -277,7 +277,7 @@ func main() {
 	fmt.Println("Conversion successful")
 	fmt.Printf("Source groups: %d\n", groups)
 	fmt.Printf("Unique IPv4 CIDRs: %d\n", len(unique))
-	fmt.Println("Output category: all")
+	fmt.Println("Output category: ALL")
 	fmt.Printf("Output file: %s (%d bytes)\n", os.Args[2], len(output))
 }
 
