@@ -1,0 +1,10 @@
+geodata-mode: true
+geo-auto-update: true
+geo-update-interval: 6
+
+geox-url:
+  geoip: "https://raw.githubusercontent.com/ElectroZhuk/geoip-iplist-tunnel-all/gh-pages/geoip_iplist.dat"
+
+rules:
+  - GEOIP,ALL,PROXY
+  - MATCH,DIRECT
