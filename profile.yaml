@@ -1,10 +1,13 @@
+# mihomo / Clash Verge Rev: раздельная маршрутизация (аналог incy-профиля)
 geodata-mode: true
+geodata-loader: standard
 geo-auto-update: true
-geo-update-interval: 6
+geo-update-interval: 6   # база обновляется каждые 6 часов
 
 geox-url:
   geoip: "https://raw.githubusercontent.com/ElectroZhuk/geoip-iplist-tunnel-all/gh-pages/geoip_iplist.dat"
 
 rules:
-  - GEOIP,ALL,PROXY
-  - MATCH,DIRECT
+  - GEOIP,LAN,DIRECT,no-resolve   # локальные сети
+  - GEOIP,ALL,PROXY               # IP из iplist идут в туннель
+  - MATCH,DIRECT                  # остальное напрямую
