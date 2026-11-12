@@ -1,0 +1,75 @@
+name: Build and publish GeoIP
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: geoip-publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Download source GeoIP database
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error \
+            --retry 4 --retry-delay 5 \
+            "https://iplist.opencck.org/?format=geoip&data=cidr4" \
+            --output /tmp/source-geoip.dat
+
+          size="$(stat -c '%s' /tmp/source-geoip.dat)"
+          if [ "$size" -lt 100 ]; then
+            echo "Downloaded file is unexpectedly small: $size bytes"
+            exit 1
+          fi
+
+          echo "Downloaded $size bytes"
+
+      - name: Merge all source groups into one category
+        run: |
+          set -euo pipefail
+          go build -trimpath -o /tmp/geoip-merge ./main.go
+          /tmp/geoip-merge /tmp/source-geoip.dat /tmp/geoip_iplist.dat
+          sha256sum /tmp/geoip_iplist.dat | awk '{print $1}' > /tmp/geoip_iplist.dat.sha256
+
+      - name: Publish files to gh-pages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/geoip-publish
+          install -m 0644 /tmp/geoip_iplist.dat /tmp/geoip-publish/geoip_iplist.dat
+          install -m 0644 /tmp/geoip_iplist.dat.sha256 /tmp/geoip-publish/geoip_iplist.dat.sha256
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout --orphan gh-pages
+          git rm -rf . >/dev/null 2>&1 || true
+
+          install -m 0644 /tmp/geoip-publish/geoip_iplist.dat ./geoip_iplist.dat
+          install -m 0644 /tmp/geoip-publish/geoip_iplist.dat.sha256 ./geoip_iplist.dat.sha256
+
+          git add geoip_iplist.dat geoip_iplist.dat.sha256
+          git commit -m "Update merged GeoIP database"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
