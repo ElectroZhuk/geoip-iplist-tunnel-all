@@ -30,3 +30,21 @@ For Xray's external GeoIP file syntax, use the file name and category:
 ```
 
 Keep the file in Xray's configured geodata directory and ensure the routing configuration references the same filename.
+
+## 3x-ui integration
+
+In 3x-ui, add this URL as a custom GeoIP source with the alias `iplist`:
+
+`https://raw.githubusercontent.com/ElectroZhuk/geoip-iplist-tunnel-all/gh-pages/geoip_iplist.dat`
+
+The panel stores custom GeoIP files as `geoip_<alias>.dat`; with alias `iplist`, the expected local filename is `geoip_iplist.dat`. This matches the VPS copy script's source path:
+
+`/usr/local/x-ui/bin/geoip_iplist.dat`
+
+For Xray routing, use:
+
+```json
+"ip": ["ext:geoip_iplist.dat:all"]
+```
+
+After adding the source, use the panel's GeoFiles update action for this custom source. The existing VPS script can then continue copying the downloaded file to `/var/www/vpn/geo/` and calculating the sidecar SHA-256 for INCY.
