@@ -1,6 +1,13 @@
 name: Build and publish GeoIP
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "custom-ip.txt"
+      - "main.go"
+      - ".github/workflows/build.yml"
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
