@@ -1,6 +1,13 @@
 name: Build and publish GeoIP
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "custom-ip.txt"
+      - "main.go"
+      - ".github/workflows/build.yml"
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
@@ -47,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           go build -trimpath -o /tmp/geoip-merge ./main.go
-          /tmp/geoip-merge /tmp/source-geoip.dat /tmp/geoip_iplist.dat
+          /tmp/geoip-merge /tmp/source-geoip.dat /tmp/geoip_iplist.dat custom-ip.txt
           sha256sum /tmp/geoip_iplist.dat | awk '{print $1}' > /tmp/geoip_iplist.dat.sha256
 
       - name: Publish files to gh-pages
