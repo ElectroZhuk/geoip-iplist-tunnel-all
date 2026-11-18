@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
+	"strings"
 	"sort"
 )
 
@@ -176,9 +179,60 @@ func cidrKey(c cidr) string {
 	return hex.EncodeToString(c.ip) + "/" + fmt.Sprint(c.prefix)
 }
 
+func parseCustomCIDRs(path string) ([]cidr, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open custom IP list: %w", err)
+	}
+	defer file.Close()
+
+	var result []cidr
+	scanner := bufio.NewScanner(file)
+	lineNumber := 0
+	for scanner.Scan() {
+		lineNumber++
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		var prefix netip.Prefix
+		if strings.Contains(line, "/") {
+			prefix, err = netip.ParsePrefix(line)
+		} else {
+			var addr netip.Addr
+			addr, err = netip.ParseAddr(line)
+			if err == nil {
+				prefix = netip.PrefixFrom(addr, addr.BitLen())
+			}
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%s:%d: invalid IP address or CIDR %q: %w", path, lineNumber, line, err)
+		}
+		if !prefix.Addr().Is4() {
+			return nil, fmt.Errorf("%s:%d: IPv6 is not supported by the current IPv4 source format: %q", path, lineNumber, line)
+		}
+
+		prefix = prefix.Masked()
+		ip := prefix.Addr().As4()
+		encoded := appendBytesField(nil, 1, ip[:])
+		encoded = appendVarint(encoded, uint64(2<<3))
+		encoded = appendVarint(encoded, uint64(prefix.Bits()))
+		result = append(result, cidr{
+			ip: append([]byte(nil), ip[:]...),
+			prefix: uint64(prefix.Bits()),
+			raw: encoded,
+		})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read custom IP list: %w", err)
+	}
+	return result, nil
+}
+
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: geoip-merge INPUT.dat OUTPUT.dat")
+	if len(os.Args) != 3 && len(os.Args) != 4 {
+		fmt.Fprintln(os.Stderr, "usage: geoip-merge INPUT.dat OUTPUT.dat [CUSTOM-IP.txt]")
 		os.Exit(2)
 	}
 
@@ -214,6 +268,17 @@ func main() {
 			// Preserve top-level metadata/unknown fields from the source file.
 			metadata = append(metadata, append([]byte(nil), f.raw...))
 		}
+	}
+
+	if len(os.Args) == 4 {
+		customCIDRs, err := parseCustomCIDRs(os.Args[3])
+		if err != nil {
+			fatal(err)
+		}
+		for _, c := range customCIDRs {
+			unique[cidrKey(c)] = c
+		}
+		fmt.Printf("Read custom IPv4 CIDRs: %d\\n", len(customCIDRs))
 	}
 
 	if groups == 0 || len(unique) == 0 {
